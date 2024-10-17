@@ -1,7 +1,10 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using minimal_api.Dominio.DTOs;
 using minimal_api.Dominio.Entidades;
+using minimal_api.Dominio.Enuns;
 using minimal_api.Dominio.Interfaces;
 using minimal_api.Dominio.ModelViews;
 using minimal_api.Dominio.Servicos;
@@ -25,6 +28,12 @@ builder.Services.AddDbContext<DbContexto>(options => {
     );
 });
 
+builder.Services.AddControllers().AddJsonOptions(options => 
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    }
+);
 
 
 var app = builder.Build();
@@ -40,9 +49,75 @@ app.MapPost("/administradores/login", ([FromBody] LoginDTO loginDTO, IAdministra
     Administrador? adm = administradorServico.Login(loginDTO);
 
     if(adm != null)
-        return Results.Ok($"Administrador {adm.Email} fez login com sucesso!");
+        return Results.Ok($"administrador {adm.Email} fez login com sucesso!");
     else
         return Results.Unauthorized();
+}).WithTags("Administradores");
+
+
+app.MapPost("/administradores", ([FromBody] AdministradorDTO administradorDTO, IAdministradorServico administradorServico)=>{
+
+    ErrosDeValidacao validacao = new ErrosDeValidacao{
+        Mensagens = new List<string>()
+    };
+
+    if (string.IsNullOrEmpty(administradorDTO.Email))
+        validacao.Mensagens.Add("Email não pode ser vazio");
+
+    if (string.IsNullOrEmpty(administradorDTO.Senha))
+        validacao.Mensagens.Add("Senha não pode ser vazio");
+    
+    if(administradorDTO.Perfil == null)
+        validacao.Mensagens.Add("Perfil não pode ser vazio");
+    
+
+    if (validacao.Mensagens.Count > 0)
+        return Results.BadRequest(validacao);
+
+    var administrador = new Administrador
+    {
+        Email = administradorDTO.Email,
+        Senha = administradorDTO.Senha,
+        Perfil = administradorDTO?.Perfil?.ToString() ?? Perfil.Editor.ToString()
+    };
+
+    administradorServico.Incluir(administrador);
+    return Results.Created($"/administrador/{administrador.Id}", 
+            new AdministradorModelView{
+            Id = administrador.Id,
+            Email = administrador.Email,
+            Perfil = administrador.Perfil
+        });
+
+}).WithTags("Administradores");
+
+app.MapGet("/Administradores", ([FromQuery] int? pagina, IAdministradorServico administradorServico)=>{
+    var administradores = administradorServico.Todos(pagina);
+    var admList = new List<AdministradorModelView>();
+
+    foreach(var adm in administradores)
+    {
+        admList.Add(new AdministradorModelView{
+            Id = adm.Id,
+            Email = adm.Email,
+            Perfil = adm.Perfil
+        });
+    }
+
+    return Results.Ok(admList);
+}).WithTags("Administradores");
+
+
+app.MapGet("/Administradores/{id}", ([FromRoute] int id, IAdministradorServico administradorServico)=>{
+    var adm = administradorServico.BuscaPorId(id);
+    
+    if (adm == null) return Results.NotFound();
+
+    return Results.Ok(new AdministradorModelView{
+            Id = adm.Id,
+            Email = adm.Email,
+            Perfil = adm.Perfil
+        });
 }).WithTags("Administradores");
 #endregion
 
@@ -80,7 +155,6 @@ app.MapPost("/veiculos", ([FromBody] VeiculoDTO veiculoDTO, IVeiculoServico veic
     };
 
     veiculoServico.Incluir(veiculo);
-
     return Results.Created($"/veiculo/{veiculo.Id}", veiculo);
 
 }).WithTags("Veiculos");
