@@ -15,7 +15,6 @@ using minimal_api.Dominio.Enuns;
 using minimal_api.Dominio.Interfaces;
 using minimal_api.Dominio.ModelViews;
 using minimal_api.Dominio.Servicos;
-using minimal_api.Entidades;
 using minimal_api.Infraestrutura.Db;
 
 #region Builder

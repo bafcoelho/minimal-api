@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using minimal_api.Dominio.DTOs;
 using minimal_api.Dominio.Servicos;
-using minimal_api.Entidades;
+using minimal_api.Dominio.Entidades;
 
 namespace minimal_api.Dominio.Interfaces
 {
